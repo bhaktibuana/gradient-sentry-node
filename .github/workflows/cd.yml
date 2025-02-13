@@ -1,0 +1,46 @@
+name: cd
+
+on:
+  workflow_run:
+    workflows: ['ci']
+    types:
+      - completed
+
+jobs:
+  cd:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to Production Server
+        if: github.event.workflow_run.head_branch == 'main'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: 22
+          script: |
+            # Pull the latest Production Docker image
+            docker pull ${{ secrets.DOCKER_USERNAME }}/gradient-bot:latest
+
+            # Navigate to the application directory
+            cd ~/app/gradient-bot
+            git pull origin main
+
+            # Update the .env file
+            rm -f .env
+            echo "ALLOW_DEBUG=True" >> .env
+            echo "GRADIENT_EMAIL=${{ secrets.GRADIENT_EMAIL }}" >> .env
+            echo "GRADIENT_USER=${{ secrets.GRADIENT_USER }}" >> .env
+            echo "GRADIENT_PASS=${{ secrets.GRADIENT_PASS }}" >> .env
+
+            # Restart the Docker container with the new image
+            docker-compose -f docker/docker-compose.prod.yml up -d --force-recreate
+
+            # Clean up unused Docker resources
+            docker system prune -a -f

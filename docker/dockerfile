@@ -1,0 +1,15 @@
+FROM alpine:3.19
+
+# define work directory
+WORKDIR /app
+
+# install packages
+RUN apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python
+RUN apk add --no-cache chromium chromium-chromedriver unzip
+RUN apk add --update --no-cache py3-pip
+
+# collect all required files
+COPY ../src .
+RUN pip install --no-cache-dir -r ./requirements.txt --break-system-packages
+
+CMD [ "python", "./main.py" ]

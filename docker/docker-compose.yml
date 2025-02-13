@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+    gradient-bot:
+        image: bhaktibuana/gradient-bot:latest
+        container_name: gradient-bot
+        restart: on-failure
+        ports:
+            - 4010:4010
+        env_file:
+            - ../.env
